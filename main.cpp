@@ -7,6 +7,7 @@
 #include <SFML/Graphics.hpp>
 
 #include <vector>
+#include <deque>
 #include <array>
 
 #include <time.h>
@@ -19,8 +20,11 @@ struct Board {
 	
 	int board[HEIGHT][WIDTH] = { 0 };
 	
-	static auto getTilePosition(const sf::Vector2i& v) -> sf::Vector2f const {
-		return sf::Vector2f(28 + v.x * TILE_SIZE, 31 + (19 * TILE_SIZE) - v.y * TILE_SIZE);
+	static sf::Vector2f getTilePosition(const sf::Vector2i& v) {
+		return sf::Vector2f(
+			28 + v.x * TILE_SIZE,
+			31 + (19 * TILE_SIZE) - v.y * TILE_SIZE
+		);
 	}
 	
 	int getTile(const sf::Vector2i& v) const {
@@ -36,7 +40,6 @@ struct Board {
 
 using PieceRotation = std::array<std::vector<std::pair<int, int>>, 4>;
 
-const PieceRotation PIECE_NO_OFFSETS = { { {}, {}, {}, {} } };
 const PieceRotation PIECE_OFFSETS_I = { {
 	{ { 0, 0}, {-1, 0}, {+2, 0}, {-1, 0}, {+2, 0} }, //   0 deg
 	{ {-1, 0}, { 0, 0}, { 0, 0}, { 0,+1}, { 0,-2} }, //  90 deg
@@ -44,10 +47,10 @@ const PieceRotation PIECE_OFFSETS_I = { {
 	{ { 0,+1}, { 0,+1}, { 0,+1}, { 0,-1}, { 0,+2} }  // 270 deg
 } };
 const PieceRotation PIECE_OFFSETS_JLSTZ { {
-	{ { 0, 0}, { 0, 0}, { 0, 0}, { 0, 0} }, //   0 deg
-	{ {+1, 0}, {+1,-1}, { 0,+2}, {+1,+2} }, //  90 deg
-	{ { 0, 0}, { 0, 0}, { 0, 0}, { 0, 0} }, // 180 deg
-	{ {-1, 0}, {-1,-1}, { 0,+2}, {-1,+2} }  // 270 deg
+	{ { 0, 0}, { 0, 0}, { 0, 0}, { 0, 0}, { 0, 0} }, //   0 deg
+	{ { 0, 0}, {+1, 0}, {+1,-1}, { 0,+2}, {+1,+2} }, //  90 deg
+	{ { 0, 0}, { 0, 0}, { 0, 0}, { 0, 0}, { 0, 0} }, // 180 deg
+	{ { 0, 0}, {-1, 0}, {-1,-1}, { 0,+2}, {-1,+2} }  // 270 deg
 } };
 const PieceRotation PIECE_OFFSETS_O = { {
 	{ { 0, 0}, }, //   0 deg
@@ -84,11 +87,11 @@ struct PieceDefinition {
 const std::vector<PieceDefinition> PIECE_DEFINITIONS = {
 	{ { {0, 0}, {-1, 0}, {+1, 0}, {+2, 0} }, &PIECE_OFFSETS_I,     5 }, // I
 	{ { {0, 0}, {-1,+1}, {-1, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 7 }, // J
-	{ { {0, 0}, {+1,+1}, {-1, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 0 }, // L
+	{ { {0, 0}, {+1,+1}, {-1, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 6 }, // L
 	{ { {0, 0}, { 0,+1}, {+1,+1}, {+1, 0} }, &PIECE_OFFSETS_O,     4 }, // O (non-standard)
 	{ { {0, 0}, { 0,+1}, {+1,+1}, {-1, 0} }, &PIECE_OFFSETS_JLSTZ, 3 }, // S
-	{ { {0, 0}, { 0,+1}, {-1, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 2 }, // T
-	{ { {0, 0}, {-1,+1}, { 0,+1}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }  // Z
+	{ { {0, 0}, { 0,+1}, {-1, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }, // T
+	{ { {0, 0}, {-1,+1}, { 0,+1}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 2 }  // Z
 };
 
 template<typename T>
@@ -114,7 +117,7 @@ struct Piece {
 	sf::Vector2i position;
 	int rotation = 0;
 	
-	const sf::Vector2i INITIAL_POSITION = { 4, 20 };
+	static constexpr std::pair<int, int> INITIAL_POSITION = { 4, 20 };
 	
 	Piece(int id) { reset(id); }
 	
@@ -123,11 +126,10 @@ struct Piece {
 		
 		tiles.clear();
 		tiles.reserve(definition->tiles.size());
-		for (const auto& tile : definition->tiles) {
+		for (const auto& tile : definition->tiles)
 			tiles.push_back({ tile.first, tile.second });
-		}
 		
-		position = INITIAL_POSITION;
+		position = { INITIAL_POSITION.first, INITIAL_POSITION.second };
 		rotation = 0;
 	}
 	
@@ -180,34 +182,70 @@ struct Piece {
 	}
 };
 
-int main() {
-	Board board;
-	Piece piece(1);
+struct PieceBag {
+	static const int MIN_VISIBLE = 3;
+	static const int PIECES_RANGE = 7 /* PIECE_DEFINITIONS.size() */;
 	
+	std::deque<int> bag;
+	
+	PieceBag() {
+		bag.clear();
+		pushNewSet();
+	}
+	
+	int getNext() {
+		if (bag.size() <= MIN_VISIBLE)
+			pushNewSet();
+		
+		// oh my god C++ just return the thing you pop from pop_front you jerk
+		int result = *bag.cbegin();
+		bag.pop_front();
+		return result;
+	}
+	
+	void pushNewSet() {
+		std::array<int, PIECES_RANGE> shuffle = { 0 };
+		
+		for (int i = 0; i < shuffle.size(); i++)
+			shuffle[i] = i;
+		
+		for (int i = shuffle.size() - 1; i > 0; i--) {
+			int j = rand() % (i + 1);
+			std::swap(shuffle[i], shuffle[j]);
+		}
+		
+		for (const auto& p : shuffle)
+			bag.push_back(p);
+	}
+};
+
+int main() {
 	srand(time(0));
+	
+	Board board;
+	PieceBag bag;
+	Piece piece(bag.getNext());
 	
 	sf::RenderWindow window(sf::VideoMode(320, 480), "Tetris");
 	window.setVerticalSyncEnabled(true);
-
+	
 	sf::Texture t1, t2, t3;
 	t1.loadFromFile("images/tiles.png");
 	t2.loadFromFile("images/background.png");
 	t3.loadFromFile("images/frame.png");
 	
 	sf::Sprite s(t1), background(t2), frame(t3);
-
-	int dx = 0; int rotate = 0; int colorNum = 1;
-	float timer = 0, delay = 0.3; //int frames = 0;
-
+	
+	int dx = 0, rotate = 0;
+	bool hardDrop = false;
+	float timer = 0, delay = 0.3;
+	
 	sf::Clock clock;
 	sf::Time time;
-
+	
 	while (window.isOpen()) {
 		auto dt = clock.restart();
-		// printf("% 4dms\t", dt.asMilliseconds());
-		// if (frames % 8 == 7) printf("\n");
 		time += dt;
-		// frames += 1;
 		
 		sf::Event e;
 		while (window.pollEvent(e)) {
@@ -218,7 +256,7 @@ int main() {
 			if (e.type == sf::Event::KeyPressed) {
 				switch (e.key.code) {
 					case sf::Keyboard::Z: rotate = -1; break;
-					case sf::Keyboard::X: rotate = -1; break;
+					case sf::Keyboard::X: rotate = +1; break;
 					case sf::Keyboard::Left:  dx = -1; break;
 					case sf::Keyboard::Right: dx = +1; break;
 				}
@@ -244,13 +282,13 @@ int main() {
 				piece.position.y -= 1;
 			} else {
 				piece.place(board);
-				piece.reset();
+				piece.reset(bag.getNext());
 			}
 			
 			// if (!check()) {
 			// 	for (int i = 0; i < 4; i++)
 			// 		field[b[i].y][b[i].x] = colorNum;
-				
+			//	
 			// 	colorNum = 1 + rand() % 7;
 			// 	int n = rand() % 7;
 			// 	for (int i = 0; i < 4; i++) {
