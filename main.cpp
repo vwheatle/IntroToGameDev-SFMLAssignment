@@ -197,17 +197,17 @@ int main() {
 	sf::Sprite s(t1), background(t2), frame(t3);
 
 	int dx = 0; int rotate = 0; int colorNum = 1;
-	float timer = 0, delay = 0.3; int frames = 0;
+	float timer = 0, delay = 0.3; //int frames = 0;
 
 	sf::Clock clock;
 	sf::Time time;
 
 	while (window.isOpen()) {
 		auto dt = clock.restart();
-		printf("% 4dms\t", dt.asMilliseconds());
-		if (frames % 8 == 7) printf("\n");
+		// printf("% 4dms\t", dt.asMilliseconds());
+		// if (frames % 8 == 7) printf("\n");
 		time += dt;
-		frames += 1;
+		// frames += 1;
 		
 		sf::Event e;
 		while (window.pollEvent(e)) {
