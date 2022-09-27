@@ -1,0 +1,19 @@
+{
+	// See https://go.microsoft.com/fwlink/?LinkId=733558
+	// for the documentation about the tasks.json format
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build and Run",
+			"type": "shell",
+			"command": "C:/msys64/msys2_shell.cmd -defterm -here -no-start -mingw64 -c ./blah.exe",
+			"dependsOn": [ "Build" ],
+		},
+		{
+			"label": "Build",
+			"type": "shell",
+			"command": "C:/msys64/msys2_shell.cmd -defterm -here -no-start -mingw64 -c ./build.sh",
+			// "command": "/c/msys64/usr/bin/env MSYSTEM=MINGW64 '/usr/bin/bash'",
+		}
+	]
+}
