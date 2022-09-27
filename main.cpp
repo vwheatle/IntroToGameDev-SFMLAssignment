@@ -20,7 +20,7 @@ struct Board {
 	int board[HEIGHT][WIDTH] = { 0 };
 	
 	static auto getTilePosition(const sf::Vector2i& v) -> sf::Vector2f const {
-		return sf::Vector2f(28 + v.x * TILE_SIZE, 31 + v.y * TILE_SIZE);
+		return sf::Vector2f(28 + v.x * TILE_SIZE, 31 + (19 * TILE_SIZE) - v.y * TILE_SIZE);
 	}
 	
 	int getTile(const sf::Vector2i& v) const {
@@ -121,6 +121,7 @@ struct Piece {
 	void reset(int id = 0) {
 		definition = &PIECE_DEFINITIONS[id];
 		
+		tiles.clear();
 		tiles.reserve(definition->tiles.size());
 		for (const auto& tile : definition->tiles) {
 			tiles.push_back({ tile.first, tile.second });
@@ -174,7 +175,7 @@ struct Piece {
 	
 	void place(Board& board) const {
 		for (const auto& tile : tiles) {
-			board.setTile(tile, definition->color);
+			board.setTile(tile + position, definition->color);
 		}
 	}
 };
@@ -241,10 +242,9 @@ int main() {
 		if (timer > delay) {
 			if (piece.fitsAt(board, { 0, -1 })) {
 				piece.position.y -= 1;
-				
+			} else {
 				piece.place(board);
 				piece.reset();
-				// TODO!
 			}
 			
 			// if (!check()) {
