@@ -186,6 +186,7 @@ struct PieceDefinition {
 // List of pieces.
 // SCOPE: wouldn't it be cool to define pieces at run time?
 const std::vector<PieceDefinition> PIECE_DEFINITIONS = {
+	// Standard Tetrominos
 	{ { {0, 0}, {-1, 0}, {+1, 0}, {+2, 0} }, &PIECE_OFFSETS_I,     5 }, // I
 	{ { {0, 0}, {-1,+1}, {-1, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 7 }, // J
 	{ { {0, 0}, {+1,+1}, {-1, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 6 }, // L
@@ -194,13 +195,14 @@ const std::vector<PieceDefinition> PIECE_DEFINITIONS = {
 	{ { {0, 0}, { 0,+1}, {-1, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }, // T
 	{ { {0, 0}, {-1,+1}, { 0,+1}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 2 }, // Z
 	
-	// funny
+	// Funny Pentominos
+	// (I made up the names for these, they're very non-standard)
 	{ { {-2, 0}, {-1, 0}, { 0, 0}, {+1, 0}, {+2, 0} }, &PIECE_OFFSETS_JLSTZ, 5 }, // It
 	{ { { 0,+1}, { 0, 0}, {-1,-1}, { 0,-1}, {+1,-1} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Tt
 	{ { {-1,+1}, {+1,+1}, {-1, 0}, { 0, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 4 }, // U
 	{ { {-1,+1}, {-1, 0}, {-1,-1}, { 0,-1}, {+1,-1} }, &PIECE_OFFSETS_JLSTZ, 6 }, // V
 	{ { {-1,+1}, {-1, 0}, { 0, 0}, { 0,-1}, {+1,-1} }, &PIECE_OFFSETS_JLSTZ, 2 }, // W
-	{ { { 0,+1}, {-1, 0}, { 0, 0}, {+1, 0}, { 0,-1} }, &PIECE_OFFSETS_JLSTZ, 1 }, // X
+	{ { { 0,+1}, {-1, 0}, { 0, 0}, {+1, 0}, { 0,-1} }, &PIECE_OFFSETS_JLSTZ, 4 }, // X
 	{ { {-1,+1}, {-1, 0}, { 0, 0}, {+1, 0}, { 0,-1} }, &PIECE_OFFSETS_JLSTZ, 1 }, // F
 	{ { {+1,+1}, {-1, 0}, { 0, 0}, {+1, 0}, { 0,-1} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Ff
 	{ { { 0,+1}, {+1,+1}, { 0, 0}, {-1,-1}, { 0,-1} }, &PIECE_OFFSETS_JLSTZ, 1 }, // St
@@ -218,19 +220,31 @@ const std::vector<PieceDefinition> PIECE_DEFINITIONS = {
 struct Level {
 	float fallDelay;
 	float lockDelay;
-	bool pentominos;
+	std::pair<int, int> piecesRange;
+	sf::Color bgColor;
 };
 
-// This sucks!
-const std::vector<Level> LEVEL_DEFINITIONS = {
-	{ 0.300, 0.75, false }, //   0 -  19
-	{ 0.275, 0.74, false }, //  20 -  39
-	{ 0.250, 0.73, false }, //  40 -  59
-	{ 0.225, 0.72, false }, //  60 -  79
-	{ 0.200, 0.71, false }, //  80 -  99
-	{ 0.200, 0.70, false }, // 100 - 119
-	{ 0.200, 0.70, true  }  // 120 +
-};
+Level getLevel(int index) {
+	std::pair<int, int> piecesRange;
+	if (index < 20) {
+		piecesRange = { 0, 7 };
+	} else if (index < 40 ) {
+		piecesRange = { 0, std::min(7 + (index - 20) / 2, 19) };
+	} else {
+		piecesRange = { 7, 19 };
+	}
+	
+	return Level({
+		(float)std::max(0.2, 0.4 - (float)index * 0.01),
+		(float)std::max(0.3, 0.7 - (float)index * 0.001),
+		piecesRange,
+		sf::Color(
+			255,
+			std::min(std::max(96, 270 - index * 3), 255),
+			std::min(std::max(80, 300 - index * 4), 255)
+		)
+	});
+}
 
 // Rotates a vector in 90 degree increments.
 // `rotation` is given in these 90deg increments, so ±2 means 180 degrees.
@@ -455,7 +469,7 @@ int main() {
 		return EXIT_FAILURE;
 	}
 	
-	char strScore[32] = "Fill lines to\nscore points!";
+	char strStats[32] = "Fill lines to\nscore points!";
 	
 	auto styleText = [&fntComicSans](sf::Text& t){
 		t.setFont(fntComicSans);
@@ -465,15 +479,25 @@ int main() {
 		t.setLineSpacing(0.9);
 	};
 	
+	// Set up the static "Next" label.
 	sf::Text txtNext;
 	styleText(txtNext);
 	txtNext.setString("Next");
-	txtNext.setPosition({ Board::POSITION.first + Board::WIDTH * Board::TILE_SIZE + 24, Board::POSITION.second - 2 });
+	txtNext.setCharacterSize(24);
+	txtNext.setPosition({
+		Board::POSITION.first + Board::WIDTH * Board::TILE_SIZE + 28,
+		Board::POSITION.second - 2
+	});
 	
-	sf::Text txtScore;
-	styleText(txtScore);
-	txtScore.setString(strScore);
-	txtScore.setPosition({ 2, Board::POSITION.second + Board::VISIBLE_HEIGHT * Board::TILE_SIZE + 8 });
+	// Set up the text object that displays statistics about the game,
+	// such as score and level.
+	sf::Text txtStats;
+	styleText(txtStats);
+	txtStats.setString(strStats);
+	txtStats.setPosition({
+		2,
+		Board::POSITION.second + Board::VISIBLE_HEIGHT * Board::TILE_SIZE + 8
+	});
 	
 	sf::Sprite sprTile(texTiles);
 	sf::Sprite sprBackground(texBackground);
@@ -483,21 +507,26 @@ int main() {
 	// input stuff.
 	int dx = 0, rotate = 0;
 	bool hardDrop = false;
-	// fall speed stuff
+	
+	// Fall Speed timers.
 	float timer = 0;
-	float fallDelay = 0.1, lockDelay = 0.1;
+	
+	// Extremely basic Delayed Auto Shift (DAS)
+	float moveDelayInitial = 0.175, moveDelay = 0.0625;
+	float moveTimer = 0;
+	bool moveRepeated = false; // have we moved once yet?
 	bool piecePlaced = false;
 	
 	bool isOver = false;
 	int score = 0, highScore = 0;
-	int lines = 0;
+	int lines = 0, levelNum = 0;
 	
 	// Game clock.
 	sf::Clock clock;
 	sf::Time time;
 	
 	sf::RectangleShape dbgRect;
-	dbgRect.setFillColor(sf::Color::Magenta);
+	dbgRect.setFillColor(sf::Color::White);
 	
 	while (window.isOpen()) {
 		// Get delta time.
@@ -507,8 +536,9 @@ int main() {
 		// Reset input state
 		dx = 0; rotate = 0; hardDrop = false;
 		
-		int levelIndex = std::min(lines, (int)LEVEL_DEFINITIONS.size() - 1);
-		const Level* level = &LEVEL_DEFINITIONS[levelIndex];
+		levelNum = lines /*/ 10*/;
+		Level levelInfo = getLevel(levelNum);
+		levelNum++; // oops! i multiply by this number!
 		
 		// Poll window & input events.
 		sf::Event e;
@@ -522,24 +552,44 @@ int main() {
 				switch (e.key.code) {
 					case sf::Keyboard::Z: rotate = -1; break;
 					case sf::Keyboard::X: rotate = +1; break;
-					case sf::Keyboard::Left:  dx = -1; break;
-					case sf::Keyboard::Right: dx = +1; break;
 					case sf::Keyboard::Up: hardDrop = true; break;
 				}
 			}
 		}
 		
+		// Respond to initial press.
+		if (!moveRepeated && moveTimer == 0) {
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))  dx = -1;
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) dx = +1;
+		}
+		
+		// Timer logic
+		if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Left)
+		&&  !sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
+			// Reset timer if no directions are being held.
+			moveTimer = 0;
+			moveRepeated = false;
+		} else {
+			// Increment timer by delta time.
+			moveTimer += dt.asSeconds();
+		}
+		
+		// Respond to held keys.
+		// (There's a different delay based on if it's the first repetition or
+		//  if it's any beyond; `moveRepeated` keeps track of that.)
+		if ((!moveRepeated && moveTimer > moveDelayInitial)
+		||  ( moveRepeated && moveTimer > moveDelay)) {
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))  dx = -1;
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) dx = +1;
+			moveTimer = 0;
+			moveRepeated = true;
+		}
+		
 		// This doesn't have key repeat.
-		fallDelay = level->fallDelay;
+		float fallDelay = levelInfo.fallDelay;
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) fallDelay /= 6.0;
 		
-		lockDelay = level->lockDelay;
-		
-		if (level->pentominos) {
-			bag.setPiecesRange(7, PIECE_DEFINITIONS.size());
-		} else {
-			bag.setPiecesRange(7);
-		}
+		bag.setPiecesRange(levelInfo.piecesRange.first, levelInfo.piecesRange.second);
 		
 		// UPDATE
 		if (!isOver) {
@@ -574,7 +624,7 @@ int main() {
 					timer = 0;
 				}
 			} else {
-				if (timer > lockDelay) {
+				if (timer > levelInfo.lockDelay) {
 					piecePlaced = true;
 					timer = 0;
 				}
@@ -584,21 +634,25 @@ int main() {
 				piece.place(board);
 				piece.reset(bag.getNext());
 				piecePlaced = false;
+				score += levelNum;
 			}
 			
 			// Check for and remove filled lines
 			int clearedLines = board.removeFilledLines();
 			if (clearedLines) {
 				lines += clearedLines;
-				score += clearedLines;
-				snprintf(strScore, sizeof(strScore), "Score: %06d", score);
-				txtScore.setString(strScore);
+				score += clearedLines * 50 * levelNum;
 			}
+			
+			snprintf(strStats, sizeof(strStats), "Score: %06d\nLevel %d", score, levelNum);
+			txtStats.setString(strStats);
 		}
 		
 		// DRAW
 		
 		window.clear(sf::Color::White);
+		
+		sprBackground.setColor(levelInfo.bgColor);
 		window.draw(sprBackground);
 		
 		auto setTextureTileIndex = [&sprTile](int i){
@@ -628,7 +682,7 @@ int main() {
 		window.draw(sprFrame);
 		
 		window.draw(txtNext);
-		window.draw(txtScore);
+		window.draw(txtStats);
 		
 		// Next Queue
 		// (Slightly a disaster.)
@@ -661,12 +715,21 @@ int main() {
 			});
 			
 			// temporary background rect
-			dbgRect.setPosition(TO_THE_RIGHT_OF_THE_BOARD + sf::Vector2f({ NEXT_BOX_SIZE.left, NEXT_BOX_SIZE.top + Board::TILE_SIZE * NEXT_BOX_SIZE.height * i }));
-			dbgRect.setSize(sf::Vector2f({ Board::TILE_SIZE * NEXT_BOX_SIZE.width, Board::TILE_SIZE * NEXT_BOX_SIZE.height - 1 }));
+			dbgRect.setPosition(TO_THE_RIGHT_OF_THE_BOARD + sf::Vector2f({
+				(float)(NEXT_BOX_SIZE.left),
+				(float)(NEXT_BOX_SIZE.top + Board::TILE_SIZE * NEXT_BOX_SIZE.height * i)
+			}));
+			dbgRect.setSize(sf::Vector2f({
+				(float)(Board::TILE_SIZE * NEXT_BOX_SIZE.width),
+				(float)(Board::TILE_SIZE * NEXT_BOX_SIZE.height - 1)
+			}));
 			window.draw(dbgRect);
 			
 			for (const auto& tile : definition.tiles) {
-				sprTile.setPosition(center + sf::Vector2f({ (float)tile.first * Board::TILE_SIZE, (float)tile.second * -Board::TILE_SIZE }));
+				sprTile.setPosition(center + sf::Vector2f({
+					(float)tile.first * Board::TILE_SIZE,
+					(float)tile.second * -Board::TILE_SIZE
+				}));
 				window.draw(sprTile);
 			}
 		}
