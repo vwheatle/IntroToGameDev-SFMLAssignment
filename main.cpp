@@ -32,6 +32,9 @@ struct Board {
 	
 	const static int TILE_SIZE = 18;
 	
+	// The board's position on the screen.
+	static constexpr std::pair<int, int> POSITION = { 28, 31 };
+	
 	// At the start of the game, the board is filled with empty tiles.
 	int board[HEIGHT][WIDTH] = { 0 };
 	
@@ -89,8 +92,8 @@ struct Board {
 	// (Yes, Tetris lives in a +Y-up coordinate space! It's cool)
 	static sf::Vector2f getTilePosition(const sf::Vector2i& v) {
 		return sf::Vector2f(
-			28 + v.x * TILE_SIZE,
-			31 + ((VISIBLE_HEIGHT - 1) * TILE_SIZE) - v.y * TILE_SIZE
+			POSITION.first  + v.x * TILE_SIZE,
+			POSITION.second + ((VISIBLE_HEIGHT - 1) * TILE_SIZE) - v.y * TILE_SIZE
 		);
 	}
 	
@@ -142,8 +145,23 @@ struct PieceDefinition {
 	// ...a list of "nudges" to try, in order, to make piece rotation easier
 	const PieceRotation* rotations;
 	
-	// a tile "color" (pretty much just an index into `images/tiles.png`)
+	// ...a tile "color" (pretty much just an index into `images/tiles.png`)
 	int color;
+	
+	// Returns a rectangle surrounding a piece.
+	// From here, you can easily get the piece's width and height.
+	sf::IntRect getPieceRect() const {
+		sf::Vector2i topLeft, bottomRight;
+		
+		for (const auto& tile : tiles) {
+			topLeft.x = std::min(topLeft.x, tile.first );
+			topLeft.y = std::min(topLeft.y, tile.second);
+			bottomRight.x = std::max(bottomRight.x, tile.first  + 1);
+			bottomRight.y = std::max(bottomRight.y, tile.second + 1);
+		}
+		
+		return sf::IntRect(topLeft, bottomRight - topLeft);
+	}
 	
 	// Returns the length of the nudge list.
 	int getOffsetCheckLength(int prevRotation, int nextRotation) const {
@@ -320,10 +338,10 @@ struct PieceBag {
 	// static const int BAG_SIZE = PIECES_RANGE * 2;
 	
 	// The bag!
-	std::deque<int> bag;
+	std::deque<int> bag = { 1, 2, 0 };
 	
 	PieceBag() {
-		bag.clear();
+		// bag.clear();
 		pushNewSet();
 	}
 	
@@ -356,6 +374,15 @@ struct PieceBag {
 	}
 };
 
+template<typename T>
+sf::Rect<T> centerRectWithin(const sf::Rect<T>& withinThat, const sf::Rect<T>& centerThis) {
+	return sf::Rect(
+		withinThat.left - (centerThis.left / 2) + (withinThat.width  - (centerThis.width  / 2)) / 2,
+		withinThat.top  - (centerThis.top  / 2) + (withinThat.height - (centerThis.height / 2)) / 2,
+		centerThis.width, centerThis.height
+	);
+}
+
 int main() {
 	// Seed RNG. This is the old C style, gotta replace that.
 	srand(time(0));
@@ -387,11 +414,18 @@ int main() {
 	int dx = 0, rotate = 0;
 	bool hardDrop = false;
 	// fall speed stuff
-	float timer = 0, delay;
+	float timer = 0;
+	float fallDelay = 0.3;
+	float lockDelay = 0.75;
+	
+	int score = 0, highScore = 0;
 	
 	// Game clock.
 	sf::Clock clock;
 	sf::Time time;
+	
+	sf::RectangleShape dbgRect;
+	dbgRect.setFillColor(sf::Color::Magenta);
 	
 	while (window.isOpen()) {
 		// Get delta time.
@@ -421,17 +455,24 @@ int main() {
 		}
 		
 		// This doesn't have key repeat.
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) delay = 0.05;
-		else delay = 0.3;
-
+		fallDelay = sf::Keyboard::isKeyPressed(sf::Keyboard::Down) ? 0.05 : 0.3;
+		
 		//// <- Move -> ///
 		if (dx != 0) {
-			if (piece.fits(board, { dx, 0 }))
+			if (piece.fits(board, { dx, 0 })) {
+				// janky
+				if (!piece.fits(board, { 0, -1 }))
+					timer = 0;
 				piece.position.x += dx;
+				if (!piece.fits(board, { 0, -1 }))
+					timer = 0;
+			}
 		}
 		if (hardDrop) {
 			piece.position.y = piece.getDropYCoord(board);
-			delay = 0.3;
+			piece.place(board);
+			piece.reset(bag.getNext());
+			timer = 0;
 		}
 
 		//////Rotate//////
@@ -440,19 +481,22 @@ int main() {
 
 		// Fall one tile per tick.
 		timer += dt.asSeconds();
-		if (timer > delay) {
-			if (piece.fits(board, { 0, -1 })) {
+		if (piece.fits(board, { 0, -1 })) {
+			if (timer > fallDelay) {
 				piece.position.y -= 1;
-			} else {
+				timer = 0;
+			}
+		} else {
+			if (timer > lockDelay) {
 				piece.place(board);
 				piece.reset(bag.getNext());
+				timer = 0;
 			}
-			
-			timer = 0;
 		}
-
+		
 		///////check lines//////////
-		board.removeFilledLines();
+		int clearedLines = board.removeFilledLines();
+		score += clearedLines;
 		
 		/////////draw//////////
 		window.clear(sf::Color::White);
@@ -475,6 +519,7 @@ int main() {
 			}
 		}
 		
+		// Current Piece
 		setTextureTileIndex(piece.definition->color);
 		for (const auto& tile : piece.tiles) {
 			sprTile.setPosition(board.getTilePosition(piece.position + tile));
@@ -482,6 +527,46 @@ int main() {
 		}
 		
 		window.draw(sprFrame);
+		
+		// Next Queue
+		// (Slightly a disaster.)
+		for (int i = 0; i < PieceBag::MIN_VISIBLE; i++) {
+			const auto& definition = PIECE_DEFINITIONS[bag.bag[i]];
+			
+			setTextureTileIndex(definition.color);
+			
+			const sf::IntRect NEXT_BOX_SIZE = { 0, 0, 4, 2 };
+			sf::IntRect pieceRect = definition.getPieceRect();
+			sf::FloatRect rect = centerRectWithin((sf::FloatRect)NEXT_BOX_SIZE, (sf::FloatRect)pieceRect);
+			rect.left -= 0.5; rect.top += 0.5;
+			
+			// const char* COOL_NAMES = "IJLOSTZ";
+			// printf(
+			// 	"piece %c has rect (% +2d,% +2d; %d x %d);  rect (% 1.2f,% 1.2f; % 1.1f x % 1.1f)\n",
+			// 	COOL_NAMES[bag.bag[i]],
+			// 	pieceRect.left, pieceRect.top, pieceRect.width, pieceRect.height,
+			// 	rect.left, rect.top, rect.width, rect.height
+			// );
+			
+			const sf::Vector2f TO_THE_RIGHT_OF_THE_BOARD = {
+				Board::POSITION.first + Board::WIDTH * Board::TILE_SIZE + 24,
+				Board::POSITION.second + 32
+			};
+			// oh gosh, this is all for centering the I and O pieces visually.
+			sf::Vector2f center = TO_THE_RIGHT_OF_THE_BOARD + sf::Vector2f({
+				Board::TILE_SIZE * (rect.left                           ),
+				Board::TILE_SIZE * (rect.top  + NEXT_BOX_SIZE.height * i)
+			});
+			
+			dbgRect.setPosition(TO_THE_RIGHT_OF_THE_BOARD + sf::Vector2f({ NEXT_BOX_SIZE.left, NEXT_BOX_SIZE.top + Board::TILE_SIZE * NEXT_BOX_SIZE.height * i }));
+			dbgRect.setSize(sf::Vector2f({ Board::TILE_SIZE * NEXT_BOX_SIZE.width, Board::TILE_SIZE * NEXT_BOX_SIZE.height - 1 }));
+			window.draw(dbgRect);
+			
+			for (const auto& tile : definition.tiles) {
+				sprTile.setPosition(center + sf::Vector2f({ (float)tile.first * Board::TILE_SIZE, (float)tile.second * -Board::TILE_SIZE }));
+				window.draw(sprTile);
+			}
+		}
 		window.display();
 	}
 
