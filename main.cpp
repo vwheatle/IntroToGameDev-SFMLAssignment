@@ -554,10 +554,11 @@ int main() {
 			};
 			// oh gosh, this is all for centering the I and O pieces visually.
 			sf::Vector2f center = TO_THE_RIGHT_OF_THE_BOARD + sf::Vector2f({
-				Board::TILE_SIZE * (rect.left                           ),
-				Board::TILE_SIZE * (rect.top  + NEXT_BOX_SIZE.height * i)
+				Board::TILE_SIZE * rect.left,
+				Board::TILE_SIZE * (NEXT_BOX_SIZE.height * (i + 1) - rect.top)
 			});
 			
+			// temporary background rect
 			dbgRect.setPosition(TO_THE_RIGHT_OF_THE_BOARD + sf::Vector2f({ NEXT_BOX_SIZE.left, NEXT_BOX_SIZE.top + Board::TILE_SIZE * NEXT_BOX_SIZE.height * i }));
 			dbgRect.setSize(sf::Vector2f({ Board::TILE_SIZE * NEXT_BOX_SIZE.width, Board::TILE_SIZE * NEXT_BOX_SIZE.height - 1 }));
 			window.draw(dbgRect);
