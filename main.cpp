@@ -42,6 +42,21 @@ struct Board {
 				board[j][i] = 0;
 	}
 	
+	// Removes all lines that are filled with non-zero tiles.
+	// Returns how many lines were cleared.
+	int removeFilledLines() {
+		int linesCleared = 0;
+		
+		for (int y = 0; y < HEIGHT; y++) {
+			while (isLineFilled(y)) {
+				removeLine(y);
+				linesCleared++;
+			}
+		}
+		
+		return linesCleared;
+	}
+	
 	// Checks if a line of the board is filled.
 	bool isLineFilled(int y) const {
 		if (y < 0) return true;
@@ -56,7 +71,18 @@ struct Board {
 	
 	// Removes a line from the board, bringing lines above it down too.
 	void removeLine(int y) {
-		// TODO: clear line etc.
+		if (y < 0 || y >= HEIGHT) return;
+		
+		// Shift lines above this line downwards.
+		for (int j = y + 1; j < HEIGHT; j++)
+			for (int i = 0; i < WIDTH; i++)
+				board[j - 1][i] = board[j][i];
+		
+		// Clear topmost line
+		// (did you know? some official tetris games screw this up!)
+		// https://youtu.be/9X2AYnr2XaQ?t=61 (look at minimap of left board)
+		for (int i = 0; i < WIDTH; i++)
+			board[HEIGHT - 1][i] = 0;
 	}
 	
 	// Returns screen coordinates of tiles.
@@ -221,7 +247,7 @@ struct Piece {
 			auto offset = definition->getOffset(oldRotation, rotation, i);
 			
 			// Nudge piece in the offset direction.
-			if (fitsAt(board, offset)) {
+			if (fits(board, offset)) {
 				// If it fits, keep this new position
 				// and stop doing further checks.
 				position += offset;
@@ -240,17 +266,33 @@ struct Piece {
 	}
 	
 	// Check if a piece fits on the board, not overlapping any non-zero tile.
-	bool fits(const Board& board) const {
-		return fitsAt(board, { 0, 0 });
+	// Optionally accepts an offset to the piece, a direction to bump its
+	// current position in.
+	bool fits(const Board& board, const sf::Vector2i offset = { 0, 0 }) const {
+		return fitsAbs(board, position + offset);
 	}
 	
 	// Check if a piece fits on the board, not overlapping any non-zero tile.
-	// But this one accepts an offset!
-	bool fitsAt(const Board& board, const sf::Vector2i offset) const {
+	// This does not use the piece's position.
+	bool fitsAbs(const Board& board, const sf::Vector2i absPosition) const {
 		for (const auto& tile : tiles)
-			if (board.getTile(tile + position + offset) > 0)
+			if (board.getTile(absPosition + tile) > 0)
 				return false;
 		return true;
+	}
+	
+	// Returns the lowest Y coordinate this piece can fall to,
+	// in its current position. Used for hard drops.
+	int getDropYCoord(const Board& board) const {
+		int y = position.y - 1;
+		
+		while (y >= 0) {
+			if (fitsAbs(board, { position.x, y }))
+				y--;
+			else return ++y;
+		}
+		
+		return 0;
 	}
 	
 	// Writes the piece to the board.
@@ -384,8 +426,12 @@ int main() {
 
 		//// <- Move -> ///
 		if (dx != 0) {
-			if (piece.fitsAt(board, { dx, 0 }))
+			if (piece.fits(board, { dx, 0 }))
 				piece.position.x += dx;
+		}
+		if (hardDrop) {
+			piece.position.y = piece.getDropYCoord(board);
+			delay = 0.3;
 		}
 
 		//////Rotate//////
@@ -395,7 +441,7 @@ int main() {
 		// Fall one tile per tick.
 		timer += dt.asSeconds();
 		if (timer > delay) {
-			if (piece.fitsAt(board, { 0, -1 })) {
+			if (piece.fits(board, { 0, -1 })) {
 				piece.position.y -= 1;
 			} else {
 				piece.place(board);
@@ -406,16 +452,7 @@ int main() {
 		}
 
 		///////check lines//////////
-		// TODO: do it
-		// int k = M - 1;
-		// for (int i = M - 1; i > 0; i--) {
-		// 	int count = 0;
-		// 	for (int j = 0; j < N; j++) {
-		// 		if (field[i][j]) count++;
-		// 		field[k][j] = field[i][j];
-		// 	}
-		// 	if (count < N) k--;
-		// }
+		board.removeFilledLines();
 		
 		/////////draw//////////
 		window.clear(sf::Color::White);
