@@ -401,9 +401,37 @@ int main() {
 	
 	// Cool pictures
 	sf::Texture texTiles, texBackground, texFrame;
-	texTiles.loadFromFile("images/tiles.png");
-	texBackground.loadFromFile("images/background.png");
-	texFrame.loadFromFile("images/frame.png");
+	
+	// Cool font
+	sf::Font fntComicSans;
+	
+	if (!texTiles.loadFromFile("images/tiles.png")
+	||  !texBackground.loadFromFile("images/background.png")
+	||  !texFrame.loadFromFile("images/frame.png")
+	||  !fntComicSans.loadFromFile("images/comic.ttf")) {
+		printf("assets missing! giving up\n");
+		return EXIT_FAILURE;
+	}
+	
+	char strScore[32] = "Fill lines to\nscore points!";
+	
+	auto styleText = [&fntComicSans](sf::Text& t){
+		t.setFont(fntComicSans);
+		t.setFillColor(sf::Color::White);
+		t.setOutlineColor(sf::Color(0x1A'53'60'FF));
+		t.setOutlineThickness(2.0);
+		t.setLineSpacing(0.9);
+	};
+	
+	sf::Text txtNext;
+	styleText(txtNext);
+	txtNext.setString("Next");
+	txtNext.setPosition({ Board::POSITION.first + Board::WIDTH * Board::TILE_SIZE + 24, Board::POSITION.second - 2 });
+	
+	sf::Text txtScore;
+	styleText(txtScore);
+	txtScore.setString(strScore);
+	txtScore.setPosition({ 2, Board::POSITION.second + Board::VISIBLE_HEIGHT * Board::TILE_SIZE + 8 });
 	
 	sf::Sprite sprTile(texTiles);
 	sf::Sprite sprBackground(texBackground);
@@ -417,7 +445,9 @@ int main() {
 	float timer = 0;
 	float fallDelay = 0.3;
 	float lockDelay = 0.75;
+	bool piecePlaced = false;
 	
+	bool isOver = false;
 	int score = 0, highScore = 0;
 	
 	// Game clock.
@@ -457,48 +487,62 @@ int main() {
 		// This doesn't have key repeat.
 		fallDelay = sf::Keyboard::isKeyPressed(sf::Keyboard::Down) ? 0.05 : 0.3;
 		
-		//// <- Move -> ///
-		if (dx != 0) {
-			if (piece.fits(board, { dx, 0 })) {
-				// janky
-				if (!piece.fits(board, { 0, -1 }))
-					timer = 0;
-				piece.position.x += dx;
-				if (!piece.fits(board, { 0, -1 }))
-					timer = 0;
+		// UPDATE
+		if (!isOver) {
+			// Move piece
+			if (dx != 0) {
+				if (piece.fits(board, { dx, 0 })) {
+					// janky
+					if (!piece.fits(board, { 0, -1 }))
+						timer = 0;
+					piece.position.x += dx;
+					if (!piece.fits(board, { 0, -1 }))
+						timer = 0;
+				}
 			}
-		}
-		if (hardDrop) {
-			piece.position.y = piece.getDropYCoord(board);
-			piece.place(board);
-			piece.reset(bag.getNext());
-			timer = 0;
-		}
-
-		//////Rotate//////
-		if (rotate != 0)
-			piece.rotate(board, rotate);
-
-		// Fall one tile per tick.
-		timer += dt.asSeconds();
-		if (piece.fits(board, { 0, -1 })) {
-			if (timer > fallDelay) {
-				piece.position.y -= 1;
+			
+			// Hard drop piece
+			if (hardDrop) {
+				piece.position.y = piece.getDropYCoord(board);
+				piecePlaced = true;
 				timer = 0;
 			}
-		} else {
-			if (timer > lockDelay) {
+			
+			// Rotate piece
+			if (rotate != 0)
+				piece.rotate(board, rotate);
+
+			// Fall one tile per tick
+			timer += dt.asSeconds();
+			if (piece.fits(board, { 0, -1 })) {
+				if (timer > fallDelay) {
+					piece.position.y -= 1;
+					timer = 0;
+				}
+			} else {
+				if (timer > lockDelay) {
+					piecePlaced = true;
+					timer = 0;
+				}
+			}
+			
+			if (piecePlaced) {
 				piece.place(board);
 				piece.reset(bag.getNext());
-				timer = 0;
+				piecePlaced = false;
+			}
+			
+			// Check for and remove filled lines
+			int clearedLines = board.removeFilledLines();
+			if (clearedLines) {
+				score += clearedLines;
+				snprintf(strScore, sizeof(strScore), "Score: %06d", score);
+				txtScore.setString(strScore);
 			}
 		}
 		
-		///////check lines//////////
-		int clearedLines = board.removeFilledLines();
-		score += clearedLines;
+		// DRAW
 		
-		/////////draw//////////
 		window.clear(sf::Color::White);
 		window.draw(sprBackground);
 		
@@ -527,6 +571,9 @@ int main() {
 		}
 		
 		window.draw(sprFrame);
+		
+		window.draw(txtNext);
+		window.draw(txtScore);
 		
 		// Next Queue
 		// (Slightly a disaster.)
@@ -571,5 +618,5 @@ int main() {
 		window.display();
 	}
 
-	return 0;
+	return EXIT_SUCCESS;
 }
