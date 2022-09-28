@@ -192,7 +192,44 @@ const std::vector<PieceDefinition> PIECE_DEFINITIONS = {
 	{ { {0, 0}, { 0,+1}, {+1,+1}, {+1, 0} }, &PIECE_OFFSETS_O,     4 }, // O (non-standard)
 	{ { {0, 0}, { 0,+1}, {+1,+1}, {-1, 0} }, &PIECE_OFFSETS_JLSTZ, 3 }, // S
 	{ { {0, 0}, { 0,+1}, {-1, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }, // T
-	{ { {0, 0}, {-1,+1}, { 0,+1}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 2 }  // Z
+	{ { {0, 0}, {-1,+1}, { 0,+1}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 2 }, // Z
+	
+	// funny
+	{ { {-2, 0}, {-1, 0}, { 0, 0}, {+1, 0}, {+2, 0} }, &PIECE_OFFSETS_JLSTZ, 5 }, // It
+	{ { { 0,+1}, { 0, 0}, {-1,-1}, { 0,-1}, {+1,-1} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Tt
+	{ { {-1,+1}, {+1,+1}, {-1, 0}, { 0, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 4 }, // U
+	{ { {-1,+1}, {-1, 0}, {-1,-1}, { 0,-1}, {+1,-1} }, &PIECE_OFFSETS_JLSTZ, 6 }, // V
+	{ { {-1,+1}, {-1, 0}, { 0, 0}, { 0,-1}, {+1,-1} }, &PIECE_OFFSETS_JLSTZ, 2 }, // W
+	{ { { 0,+1}, {-1, 0}, { 0, 0}, {+1, 0}, { 0,-1} }, &PIECE_OFFSETS_JLSTZ, 1 }, // X
+	{ { {-1,+1}, {-1, 0}, { 0, 0}, {+1, 0}, { 0,-1} }, &PIECE_OFFSETS_JLSTZ, 1 }, // F
+	{ { {+1,+1}, {-1, 0}, { 0, 0}, {+1, 0}, { 0,-1} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Ff
+	{ { { 0,+1}, {+1,+1}, { 0, 0}, {-1,-1}, { 0,-1} }, &PIECE_OFFSETS_JLSTZ, 1 }, // St
+	{ { {-1,+1}, { 0,+1}, { 0, 0}, { 0,-1}, {+1,-1} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Zt
+	{ { {-1,+1}, {-1, 0}, { 0, 0}, {+1, 0}, {+2, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Jt
+	{ { {+1,+1}, {-2, 0}, {-1, 0}, { 0, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Lt
+	{ { { 0,+1}, {-1, 0}, { 0, 0}, {+1, 0}, {+2, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Yf
+	{ { { 0,+1}, {-2, 0}, {-1, 0}, { 0, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Y
+	{ { { 0,+1}, {+1,+1}, {-2, 0}, {-1, 0}, { 0, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Sw
+	{ { {-1,+1}, { 0,+1}, { 0, 0}, {+1, 0}, {+2, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Zw
+	{ { {-1,+1}, { 0,+1}, {-1, 0}, { 0, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }, // P
+	{ { { 0,+1}, {+1,+1}, {-1, 0}, { 0, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }  // Q
+};
+
+struct Level {
+	float fallDelay;
+	float lockDelay;
+	bool pentominos;
+};
+
+// This sucks!
+const std::vector<Level> LEVEL_DEFINITIONS = {
+	{ 0.300, 0.75, false }, //   0 -  19
+	{ 0.275, 0.74, false }, //  20 -  39
+	{ 0.250, 0.73, false }, //  40 -  59
+	{ 0.225, 0.72, false }, //  60 -  79
+	{ 0.200, 0.71, false }, //  80 -  99
+	{ 0.200, 0.70, false }, // 100 - 119
+	{ 0.200, 0.70, true  }  // 120 +
 };
 
 // Rotates a vector in 90 degree increments.
@@ -329,20 +366,22 @@ struct PieceBag {
 	static const int MIN_VISIBLE = 3;
 	
 	// The range of piece IDs to generate in the RNG.
-	static const int PIECES_RANGE = 7 /* PIECE_DEFINITIONS.size() */;
-	
-	// The number of pieces to append to the queue
-	// every time the bag needs to be shuffled.
-	static const int BAG_SIZE = PIECES_RANGE;
-	// Allows for 14-bag if you want. (I'm just gonna use 7-bag.)
-	// static const int BAG_SIZE = PIECES_RANGE * 2;
+	// .first is lower bound, .second is exclusive upper bound.
+	std::pair<int, int> piecesRange = { 0, PIECE_DEFINITIONS.size() };
 	
 	// The bag!
 	std::deque<int> bag = { 1, 2, 0 };
 	
 	PieceBag() {
 		// bag.clear();
+		setPiecesRange(0, 7);
 		pushNewSet();
+	}
+	
+	void setPiecesRange(int lower, int upper = 0) {
+		if (lower > upper) std::swap(lower, upper);
+		if (upper == 0) return;
+		piecesRange = { lower, upper };
 	}
 	
 	// Pops a piece from the front of the queue.
@@ -359,10 +398,13 @@ struct PieceBag {
 	
 	// Pushes a new batch of BAG_SIZE pieces to the end of the queue.
 	void pushNewSet() {
-		std::array<int, BAG_SIZE> shuffle = { 0 };
+		int rangeSize = piecesRange.second - piecesRange.first;
 		
-		for (int i = 0; i < shuffle.size(); i++)
-			shuffle[i] = i % PIECES_RANGE;
+		std::vector<int> shuffle;
+		shuffle.reserve(rangeSize);
+		
+		for (int i = 0; i < rangeSize; i++)
+			shuffle.push_back((i % rangeSize) + piecesRange.first);
 		
 		for (int i = shuffle.size() - 1; i > 0; i--) {
 			int j = rand() % (i + 1);
@@ -443,12 +485,12 @@ int main() {
 	bool hardDrop = false;
 	// fall speed stuff
 	float timer = 0;
-	float fallDelay = 0.3;
-	float lockDelay = 0.75;
+	float fallDelay = 0.1, lockDelay = 0.1;
 	bool piecePlaced = false;
 	
 	bool isOver = false;
 	int score = 0, highScore = 0;
+	int lines = 0;
 	
 	// Game clock.
 	sf::Clock clock;
@@ -464,6 +506,9 @@ int main() {
 		
 		// Reset input state
 		dx = 0; rotate = 0; hardDrop = false;
+		
+		int levelIndex = std::min(lines, (int)LEVEL_DEFINITIONS.size() - 1);
+		const Level* level = &LEVEL_DEFINITIONS[levelIndex];
 		
 		// Poll window & input events.
 		sf::Event e;
@@ -485,7 +530,16 @@ int main() {
 		}
 		
 		// This doesn't have key repeat.
-		fallDelay = sf::Keyboard::isKeyPressed(sf::Keyboard::Down) ? 0.05 : 0.3;
+		fallDelay = level->fallDelay;
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) fallDelay /= 6.0;
+		
+		lockDelay = level->lockDelay;
+		
+		if (level->pentominos) {
+			bag.setPiecesRange(7, PIECE_DEFINITIONS.size());
+		} else {
+			bag.setPiecesRange(7);
+		}
 		
 		// UPDATE
 		if (!isOver) {
@@ -535,6 +589,7 @@ int main() {
 			// Check for and remove filled lines
 			int clearedLines = board.removeFilledLines();
 			if (clearedLines) {
+				lines += clearedLines;
 				score += clearedLines;
 				snprintf(strScore, sizeof(strScore), "Score: %06d", score);
 				txtScore.setString(strScore);
