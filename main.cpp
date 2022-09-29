@@ -196,31 +196,38 @@ const std::vector<PieceDefinition> PIECE_DEFINITIONS = {
 	{ { {0, 0}, {-1,+1}, { 0,+1}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 2 }, // Z
 	
 	// Funny Pentominos
-	// (I made up the names for these, they're very non-standard)
+	// (I made up some of the names for these, they're very non-standard)
 	{ { {-2, 0}, {-1, 0}, { 0, 0}, {+1, 0}, {+2, 0} }, &PIECE_OFFSETS_JLSTZ, 5 }, // It
 	{ { { 0,+1}, { 0, 0}, {-1,-1}, { 0,-1}, {+1,-1} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Tt
 	{ { {-1,+1}, {+1,+1}, {-1, 0}, { 0, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 4 }, // U
 	{ { {-1,+1}, {-1, 0}, {-1,-1}, { 0,-1}, {+1,-1} }, &PIECE_OFFSETS_JLSTZ, 6 }, // V
 	{ { {-1,+1}, {-1, 0}, { 0, 0}, { 0,-1}, {+1,-1} }, &PIECE_OFFSETS_JLSTZ, 2 }, // W
 	{ { { 0,+1}, {-1, 0}, { 0, 0}, {+1, 0}, { 0,-1} }, &PIECE_OFFSETS_JLSTZ, 4 }, // X
-	{ { {-1,+1}, {-1, 0}, { 0, 0}, {+1, 0}, { 0,-1} }, &PIECE_OFFSETS_JLSTZ, 1 }, // F
-	{ { {+1,+1}, {-1, 0}, { 0, 0}, {+1, 0}, { 0,-1} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Ff
-	{ { { 0,+1}, {+1,+1}, { 0, 0}, {-1,-1}, { 0,-1} }, &PIECE_OFFSETS_JLSTZ, 1 }, // St
-	{ { {-1,+1}, { 0,+1}, { 0, 0}, { 0,-1}, {+1,-1} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Zt
-	{ { {-1,+1}, {-1, 0}, { 0, 0}, {+1, 0}, {+2, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Jt
-	{ { {+1,+1}, {-2, 0}, {-1, 0}, { 0, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Lt
-	{ { { 0,+1}, {-1, 0}, { 0, 0}, {+1, 0}, {+2, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Yf
-	{ { { 0,+1}, {-2, 0}, {-1, 0}, { 0, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Y
-	{ { { 0,+1}, {+1,+1}, {-2, 0}, {-1, 0}, { 0, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Sw
-	{ { {-1,+1}, { 0,+1}, { 0, 0}, {+1, 0}, {+2, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }, // Zw
-	{ { {-1,+1}, { 0,+1}, {-1, 0}, { 0, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }, // P
-	{ { { 0,+1}, {+1,+1}, {-1, 0}, { 0, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 1 }  // Q
+	{ { {-1,+1}, {-1, 0}, { 0, 0}, {+1, 0}, { 0,-1} }, &PIECE_OFFSETS_JLSTZ, 7 }, // F
+	{ { {+1,+1}, {-1, 0}, { 0, 0}, {+1, 0}, { 0,-1} }, &PIECE_OFFSETS_JLSTZ, 6 }, // Ff
+	{ { { 0,+1}, {+1,+1}, { 0, 0}, {-1,-1}, { 0,-1} }, &PIECE_OFFSETS_JLSTZ, 3 }, // St
+	{ { {-1,+1}, { 0,+1}, { 0, 0}, { 0,-1}, {+1,-1} }, &PIECE_OFFSETS_JLSTZ, 2 }, // Zt
+	{ { {-1,+1}, {-1, 0}, { 0, 0}, {+1, 0}, {+2, 0} }, &PIECE_OFFSETS_JLSTZ, 7 }, // Jt
+	{ { {+1,+1}, {-2, 0}, {-1, 0}, { 0, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 6 }, // Lt
+	{ { { 0,+1}, {-1, 0}, { 0, 0}, {+1, 0}, {+2, 0} }, &PIECE_OFFSETS_JLSTZ, 5 }, // Yf
+	{ { { 0,+1}, {-2, 0}, {-1, 0}, { 0, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 5 }, // Y
+	{ { { 0,+1}, {+1,+1}, {-2, 0}, {-1, 0}, { 0, 0} }, &PIECE_OFFSETS_JLSTZ, 3 }, // Sw
+	{ { {-1,+1}, { 0,+1}, { 0, 0}, {+1, 0}, {+2, 0} }, &PIECE_OFFSETS_JLSTZ, 2 }, // Zw
+	{ { {-1,+1}, { 0,+1}, {-1, 0}, { 0, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 4 }, // P
+	{ { { 0,+1}, {+1,+1}, {-1, 0}, { 0, 0}, {+1, 0} }, &PIECE_OFFSETS_JLSTZ, 4 }  // Q
 };
 
 struct Level {
+	// how fast a piece falls.
 	float fallDelay;
+	
+	// how fast a piece locks in place.
 	float lockDelay;
+	
+	// which range of pieces from PIECE_DEFINITIONS to spawn.
 	std::pair<int, int> piecesRange;
+	
+	// what color the background is.
 	sf::Color bgColor;
 };
 
@@ -233,8 +240,10 @@ Level getLevel(int index) {
 	if (index < 10) {
 		piecesRange = { 0, 7 };
 	} else if (index < 35 ) {
+		// once level 10 rolls around, start spawning pentominos
 		piecesRange = { 0, std::min(7 + (index - 10) / 2, 19) };
 	} else {
+		// if you're this far, you don't need tetrominos any more.
 		piecesRange = { 7, 19 };
 	}
 	
@@ -243,7 +252,8 @@ Level getLevel(int index) {
 		(float)std::max(0.3, 0.7 - (float)index * 0.01),
 		piecesRange,
 		sf::Color(
-			255,
+			255, // meant to later look like a sunset,
+			// then later look like the sky is blood red.
 			std::min(std::max(96, 260 - index * 3), 255),
 			std::min(std::max(80, 270 - index * 4), 255)
 		)
@@ -297,8 +307,6 @@ struct Piece {
 		
 		position = { INITIAL_POSITION.first, INITIAL_POSITION.second };
 		rotation = 0;
-		
-		// TODO: nudge piece up if stack high enough. (guideline)
 	}
 	
 	// Attempts to rotate the piece by the specified amount.
@@ -390,9 +398,7 @@ struct PieceBag {
 	// The bag!
 	std::deque<int> bag;
 	
-	PieceBag() {
-		reset();
-	}
+	PieceBag() { reset(); }
 	
 	void reset() {
 		bag.clear();
@@ -400,6 +406,7 @@ struct PieceBag {
 		pushNewSet();
 	}
 	
+	// Select which subset of PIECE_DEFINITIONS the bag will take from.
 	void setPiecesRange(int lower, int upper = 0) {
 		if (lower > upper) std::swap(lower, upper);
 		if (upper == 0) return;
@@ -407,7 +414,7 @@ struct PieceBag {
 	}
 	
 	// Pops a piece from the front of the queue.
-	// (Automatically gets new pieces if 
+	// (Automatically gets new pieces if end of queue is then visible.)
 	int getNext() {
 		if (bag.size() <= MIN_VISIBLE)
 			pushNewSet();
@@ -438,6 +445,7 @@ struct PieceBag {
 	}
 };
 
+// tried to center a smaller rect inside a larger rectangle. untested.
 template<typename T>
 sf::Rect<T> centerRectWithin(const sf::Rect<T>& withinThat, const sf::Rect<T>& centerThis) {
 	return sf::Rect(
@@ -448,11 +456,10 @@ sf::Rect<T> centerRectWithin(const sf::Rect<T>& withinThat, const sf::Rect<T>& c
 }
 
 int main() {
-	// Seed RNG. This is the old C style, gotta replace that.
+	// Seed RNG.
 	srand(time(0));
 	
 	// Initialize all the parts of the game.
-	// Might give up and make all these global.
 	Board board;
 	Piece piece;
 	
@@ -469,6 +476,7 @@ int main() {
 	// Cool font
 	sf::Font fntComicSans;
 	
+	// Error out if I can't find assets.
 	if (!texTiles.loadFromFile("images/tiles.png")
 	||  !texBackground.loadFromFile("images/background.png")
 	||  !texFrame.loadFromFile("images/frame.png")
@@ -477,9 +485,12 @@ int main() {
 		return EXIT_FAILURE;
 	}
 	
+	// String buffers.
 	char strStats[32] = "Press R to begin!";
 	char strHighScore[32] = "Fill lines to score points!";
 	
+	// Helper function to initialize a bunch of
+	// text objects with the correct styles.
 	auto styleText = [&fntComicSans](sf::Text& t){
 		t.setFont(fntComicSans);
 		t.setFillColor(sf::Color::White);
@@ -508,12 +519,14 @@ int main() {
 		Board::POSITION.second + Board::VISIBLE_HEIGHT * Board::TILE_SIZE + 8
 	});
 	
+	// Set up the high score label.
 	sf::Text txtHighScore;
 	styleText(txtHighScore);
 	txtHighScore.setCharacterSize(18);
 	txtHighScore.setString(strHighScore);
 	txtHighScore.setPosition({ 2, 2 });
 	
+	// Set up the title/game over screen label.
 	sf::Text txtBigText;
 	styleText(txtBigText);
 	txtBigText.setString("Normal Tetris");
@@ -551,6 +564,7 @@ int main() {
 	sf::Clock clock;
 	sf::Time time;
 	
+	// Wasn't meant to permanently be here, but it is now.
 	sf::RectangleShape dbgRect;
 	dbgRect.setFillColor(sf::Color::White);
 	
@@ -668,17 +682,22 @@ int main() {
 				}
 			}
 			
+			// If piece was hard dropped or it locked,..
 			if (piecePlaced) {
+				// ...write it to the board.
 				piece.place(board);
+				
+				// and give out the points for placing a piece.
+				score += levelNum;
+				
+				// After that, spawn a new piece.
 				piece.reset(bag.getNext());
 				piecePlaced = false;
-				
-				score += levelNum;
 				
 				// Bump up if not fitting on board
 				if (!piece.fits(board)) {
 					piece.position.y++;
-					// *Then* game over.
+					// *Then* game over if it still doesn't fit.
 					if (!piece.fits(board)) {
 						gameOver = true;
 						txtBigText.setString("Game over!\n(R: Restart)");
@@ -693,12 +712,15 @@ int main() {
 				score += clearedLines * 50 * levelNum;
 			}
 			
+			// Update high score if you've exceeded it.
 			if (score > highScore)
 				highScore = score;
 			
+			// Update text label showing score and level.
 			snprintf(strStats, sizeof(strStats), "Score: %08d\nLevel %d", score, levelNum);
 			txtStats.setString(strStats);
 			
+			// Update high score label.
 			snprintf(strHighScore, sizeof(strHighScore), "High Score: %08d", highScore);
 			txtHighScore.setString(strHighScore);
 		}
@@ -707,14 +729,18 @@ int main() {
 		
 		window.clear(sf::Color::White);
 		
+		// Tint background.
 		sprBackground.setColor(levelInfo.bgColor);
 		window.draw(sprBackground);
 		
+		// Utility function to easily set sprite texture rect to
+		// the proper tile, based on tile index.
 		auto setTextureTileIndex = [&sprTile](int i){
 			auto r = sf::IntRect(i * Board::TILE_SIZE, 0, Board::TILE_SIZE, Board::TILE_SIZE);
 			sprTile.setTextureRect(r);
 		};
 		
+		// Draw board.
 		for (int j = 0; j < Board::HEIGHT; j++) {
 			sprTile.setPosition(board.getTilePosition({ -1, j }));
 			for (int i = 0; i < Board::WIDTH; i++) {
@@ -727,7 +753,7 @@ int main() {
 			}
 		}
 		
-		// Current Piece
+		// Draw current Piece
 		if (!gameOver) {
 			setTextureTileIndex(piece.definition->color);
 			for (const auto& tile : piece.tiles) {
@@ -736,15 +762,18 @@ int main() {
 			}
 		}
 		
+		// Draw frame around the board.
 		window.draw(sprFrame);
 		
+		// Draw the text labels.
 		window.draw(txtStats);
 		window.draw(txtHighScore);
 		
+		// Draw the big text that lays atop the board.
 		window.draw(txtBigText);
 		
-		// Next Queue
-		// (Slightly a disaster.)
+		// Draw the Next Queue
+		// (Slightly a disaster, but good enough.)
 		if (!gameOver) {
 			window.draw(txtNext);
 			
@@ -758,6 +787,8 @@ int main() {
 				// (i don't think `centerRectWithin` actually works, oops)
 				sf::FloatRect rect = centerRectWithin((sf::FloatRect)NEXT_BOX_SIZE, (sf::FloatRect)pieceRect);
 				rect.left -= 0.5; rect.top += 0.5;
+				
+				// stumble through rectangle math.
 				
 				const sf::Vector2f TO_THE_RIGHT_OF_THE_BOARD = {
 					Board::POSITION.first + Board::WIDTH * Board::TILE_SIZE + 24,
