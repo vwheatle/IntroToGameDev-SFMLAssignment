@@ -225,23 +225,27 @@ struct Level {
 };
 
 Level getLevel(int index) {
+	// tried to be mindful about when things happen in this game.
+	// https://www.desmos.com/calculator/mktrzc7bs9
+	// and to see pretty much everything in this game,
+	// you just have to clear 120 lines.
 	std::pair<int, int> piecesRange;
-	if (index < 20) {
+	if (index < 10) {
 		piecesRange = { 0, 7 };
-	} else if (index < 40 ) {
-		piecesRange = { 0, std::min(7 + (index - 20) / 2, 19) };
+	} else if (index < 35 ) {
+		piecesRange = { 0, std::min(7 + (index - 10) / 2, 19) };
 	} else {
 		piecesRange = { 7, 19 };
 	}
 	
 	return Level({
 		(float)std::max(0.2, 0.4 - (float)index * 0.01),
-		(float)std::max(0.3, 0.7 - (float)index * 0.001),
+		(float)std::max(0.3, 0.7 - (float)index * 0.01),
 		piecesRange,
 		sf::Color(
 			255,
-			std::min(std::max(96, 270 - index * 3), 255),
-			std::min(std::max(80, 300 - index * 4), 255)
+			std::min(std::max(96, 260 - index * 3), 255),
+			std::min(std::max(80, 270 - index * 4), 255)
 		)
 	});
 }
@@ -384,10 +388,14 @@ struct PieceBag {
 	std::pair<int, int> piecesRange = { 0, PIECE_DEFINITIONS.size() };
 	
 	// The bag!
-	std::deque<int> bag = { 1, 2, 0 };
+	std::deque<int> bag;
 	
 	PieceBag() {
-		// bag.clear();
+		reset();
+	}
+	
+	void reset() {
+		bag.clear();
 		setPiecesRange(0, 7);
 		pushNewSet();
 	}
@@ -452,7 +460,7 @@ int main() {
 	piece.reset(bag.getNext());
 	
 	// Create the dang window.
-	sf::RenderWindow window(sf::VideoMode(320, 480), "Tetris");
+	sf::RenderWindow window(sf::VideoMode(320, 480), "Normal Tetris");
 	window.setVerticalSyncEnabled(true); // Run at a sensible speed.
 	
 	// Cool pictures
@@ -469,7 +477,8 @@ int main() {
 		return EXIT_FAILURE;
 	}
 	
-	char strStats[32] = "Fill lines to\nscore points!";
+	char strStats[32] = "Press R to begin!";
+	char strHighScore[32] = "Fill lines to score points!";
 	
 	auto styleText = [&fntComicSans](sf::Text& t){
 		t.setFont(fntComicSans);
@@ -499,6 +508,21 @@ int main() {
 		Board::POSITION.second + Board::VISIBLE_HEIGHT * Board::TILE_SIZE + 8
 	});
 	
+	sf::Text txtHighScore;
+	styleText(txtHighScore);
+	txtHighScore.setCharacterSize(18);
+	txtHighScore.setString(strHighScore);
+	txtHighScore.setPosition({ 2, 2 });
+	
+	sf::Text txtBigText;
+	styleText(txtBigText);
+	txtBigText.setString("Normal Tetris");
+	txtBigText.setCharacterSize(40);
+	txtBigText.setPosition({
+		2,
+		Board::POSITION.second + Board::VISIBLE_HEIGHT * Board::TILE_SIZE / 2
+	});
+	
 	sf::Sprite sprTile(texTiles);
 	sf::Sprite sprBackground(texBackground);
 	sf::Sprite sprFrame(texFrame);
@@ -517,9 +541,11 @@ int main() {
 	bool moveRepeated = false; // have we moved once yet?
 	bool piecePlaced = false;
 	
-	bool isOver = false;
-	int score = 0, highScore = 0;
-	int lines = 0, levelNum = 0;
+	bool gameOver = true; // ssshhh! the title screen is just if the game over screen said something else
+	
+	long int score = 0, highScore = 13370;
+	int lines = 0;
+	int levelNum = 0;
 	
 	// Game clock.
 	sf::Clock clock;
@@ -536,10 +562,6 @@ int main() {
 		// Reset input state
 		dx = 0; rotate = 0; hardDrop = false;
 		
-		levelNum = lines /*/ 10*/;
-		Level levelInfo = getLevel(levelNum);
-		levelNum++; // oops! i multiply by this number!
-		
 		// Poll window & input events.
 		sf::Event e;
 		while (window.pollEvent(e)) {
@@ -553,9 +575,27 @@ int main() {
 					case sf::Keyboard::Z: rotate = -1; break;
 					case sf::Keyboard::X: rotate = +1; break;
 					case sf::Keyboard::Up: hardDrop = true; break;
+					case sf::Keyboard::R: {
+						gameOver = false;
+						
+						board.clear();
+						bag.reset();
+						piece.reset(bag.getNext());
+						
+						score = 0; lines = 0;
+						
+						moveRepeated = false;
+						moveTimer = 0; timer = 0;
+						
+						txtBigText.setString("");
+					} break;
 				}
 			}
 		}
+		
+		levelNum = lines / 6; // extremely simple level system
+		Level levelInfo = getLevel(levelNum);
+		levelNum++; // oops! i multiply by this number!
 		
 		// Respond to initial press.
 		if (!moveRepeated && moveTimer == 0) {
@@ -592,11 +632,13 @@ int main() {
 		bag.setPiecesRange(levelInfo.piecesRange.first, levelInfo.piecesRange.second);
 		
 		// UPDATE
-		if (!isOver) {
+		if (!gameOver) {
 			// Move piece
 			if (dx != 0) {
 				if (piece.fits(board, { dx, 0 })) {
-					// janky
+					// janky, but resets the timer if piece
+					// is either moved off of or onto a surface
+					// (to make lockDelay easier to implement)
 					if (!piece.fits(board, { 0, -1 }))
 						timer = 0;
 					piece.position.x += dx;
@@ -605,7 +647,7 @@ int main() {
 				}
 			}
 			
-			// Hard drop piece
+			// Drop piece all the way to the bottom
 			if (hardDrop) {
 				piece.position.y = piece.getDropYCoord(board);
 				piecePlaced = true;
@@ -634,7 +676,18 @@ int main() {
 				piece.place(board);
 				piece.reset(bag.getNext());
 				piecePlaced = false;
+				
 				score += levelNum;
+				
+				// Bump up if not fitting on board
+				if (!piece.fits(board)) {
+					piece.position.y++;
+					// *Then* game over.
+					if (!piece.fits(board)) {
+						gameOver = true;
+						txtBigText.setString("Game over!\n(R: Restart)");
+					}
+				}
 			}
 			
 			// Check for and remove filled lines
@@ -644,8 +697,14 @@ int main() {
 				score += clearedLines * 50 * levelNum;
 			}
 			
-			snprintf(strStats, sizeof(strStats), "Score: %06d\nLevel %d", score, levelNum);
+			if (score > highScore)
+				highScore = score;
+			
+			snprintf(strStats, sizeof(strStats), "Score: %08d\nLevel %d", score, levelNum);
 			txtStats.setString(strStats);
+			
+			snprintf(strHighScore, sizeof(strHighScore), "High Score: %08d", highScore);
+			txtHighScore.setString(strHighScore);
 		}
 		
 		// DRAW
@@ -673,66 +732,68 @@ int main() {
 		}
 		
 		// Current Piece
-		setTextureTileIndex(piece.definition->color);
-		for (const auto& tile : piece.tiles) {
-			sprTile.setPosition(board.getTilePosition(piece.position + tile));
-			window.draw(sprTile);
+		if (!gameOver) {
+			setTextureTileIndex(piece.definition->color);
+			for (const auto& tile : piece.tiles) {
+				sprTile.setPosition(board.getTilePosition(piece.position + tile));
+				window.draw(sprTile);
+			}
 		}
 		
 		window.draw(sprFrame);
 		
-		window.draw(txtNext);
 		window.draw(txtStats);
+		window.draw(txtHighScore);
+		
+		window.draw(txtBigText);
 		
 		// Next Queue
 		// (Slightly a disaster.)
-		for (int i = 0; i < PieceBag::MIN_VISIBLE; i++) {
-			const auto& definition = PIECE_DEFINITIONS[bag.bag[i]];
+		if (!gameOver) {
+			window.draw(txtNext);
 			
-			setTextureTileIndex(definition.color);
-			
-			const sf::IntRect NEXT_BOX_SIZE = { 0, 0, 4, 2 };
-			sf::IntRect pieceRect = definition.getPieceRect();
-			sf::FloatRect rect = centerRectWithin((sf::FloatRect)NEXT_BOX_SIZE, (sf::FloatRect)pieceRect);
-			rect.left -= 0.5; rect.top += 0.5;
-			
-			// const char* COOL_NAMES = "IJLOSTZ";
-			// printf(
-			// 	"piece %c has rect (% +2d,% +2d; %d x %d);  rect (% 1.2f,% 1.2f; % 1.1f x % 1.1f)\n",
-			// 	COOL_NAMES[bag.bag[i]],
-			// 	pieceRect.left, pieceRect.top, pieceRect.width, pieceRect.height,
-			// 	rect.left, rect.top, rect.width, rect.height
-			// );
-			
-			const sf::Vector2f TO_THE_RIGHT_OF_THE_BOARD = {
-				Board::POSITION.first + Board::WIDTH * Board::TILE_SIZE + 24,
-				Board::POSITION.second + 32
-			};
-			// oh gosh, this is all for centering the I and O pieces visually.
-			sf::Vector2f center = TO_THE_RIGHT_OF_THE_BOARD + sf::Vector2f({
-				Board::TILE_SIZE * rect.left,
-				Board::TILE_SIZE * (NEXT_BOX_SIZE.height * (i + 1) - rect.top)
-			});
-			
-			// temporary background rect
-			dbgRect.setPosition(TO_THE_RIGHT_OF_THE_BOARD + sf::Vector2f({
-				(float)(NEXT_BOX_SIZE.left),
-				(float)(NEXT_BOX_SIZE.top + Board::TILE_SIZE * NEXT_BOX_SIZE.height * i)
-			}));
-			dbgRect.setSize(sf::Vector2f({
-				(float)(Board::TILE_SIZE * NEXT_BOX_SIZE.width),
-				(float)(Board::TILE_SIZE * NEXT_BOX_SIZE.height - 1)
-			}));
-			window.draw(dbgRect);
-			
-			for (const auto& tile : definition.tiles) {
-				sprTile.setPosition(center + sf::Vector2f({
-					(float)tile.first * Board::TILE_SIZE,
-					(float)tile.second * -Board::TILE_SIZE
+			for (int i = 0; i < PieceBag::MIN_VISIBLE; i++) {
+				const auto& definition = PIECE_DEFINITIONS[bag.bag[i]];
+				
+				setTextureTileIndex(definition.color);
+				
+				const sf::IntRect NEXT_BOX_SIZE = { 0, 0, 4, 2 };
+				sf::IntRect pieceRect = definition.getPieceRect();
+				// (i don't think `centerRectWithin` actually works, oops)
+				sf::FloatRect rect = centerRectWithin((sf::FloatRect)NEXT_BOX_SIZE, (sf::FloatRect)pieceRect);
+				rect.left -= 0.5; rect.top += 0.5;
+				
+				const sf::Vector2f TO_THE_RIGHT_OF_THE_BOARD = {
+					Board::POSITION.first + Board::WIDTH * Board::TILE_SIZE + 24,
+					Board::POSITION.second + 32
+				};
+				// oh gosh, this is all for centering the I and O pieces visually.
+				sf::Vector2f center = TO_THE_RIGHT_OF_THE_BOARD + sf::Vector2f({
+					Board::TILE_SIZE * rect.left,
+					Board::TILE_SIZE * (NEXT_BOX_SIZE.height * (i + 1) - rect.top)
+				});
+				
+				// temporary background rect
+				dbgRect.setPosition(TO_THE_RIGHT_OF_THE_BOARD + sf::Vector2f({
+					(float)(NEXT_BOX_SIZE.left),
+					(float)(NEXT_BOX_SIZE.top + Board::TILE_SIZE * NEXT_BOX_SIZE.height * i)
 				}));
-				window.draw(sprTile);
+				dbgRect.setSize(sf::Vector2f({
+					(float)(Board::TILE_SIZE * NEXT_BOX_SIZE.width),
+					(float)(Board::TILE_SIZE * NEXT_BOX_SIZE.height - 1)
+				}));
+				window.draw(dbgRect);
+				
+				for (const auto& tile : definition.tiles) {
+					sprTile.setPosition(center + sf::Vector2f({
+						(float)tile.first * Board::TILE_SIZE,
+						(float)tile.second * -Board::TILE_SIZE
+					}));
+					window.draw(sprTile);
+				}
 			}
 		}
+		
 		window.display();
 	}
 
