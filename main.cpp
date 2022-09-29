@@ -448,7 +448,7 @@ struct PieceBag {
 // tried to center a smaller rect inside a larger rectangle. untested.
 template<typename T>
 sf::Rect<T> centerRectWithin(const sf::Rect<T>& withinThat, const sf::Rect<T>& centerThis) {
-	return sf::Rect(
+	return sf::Rect<T>(
 		withinThat.left - (centerThis.left / 2) + (withinThat.width  - (centerThis.width  / 2)) / 2,
 		withinThat.top  - (centerThis.top  / 2) + (withinThat.height - (centerThis.height / 2)) / 2,
 		centerThis.width, centerThis.height
