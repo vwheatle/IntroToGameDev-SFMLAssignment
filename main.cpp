@@ -575,6 +575,8 @@ int main() {
 					case sf::Keyboard::Z: rotate = -1; break;
 					case sf::Keyboard::X: rotate = +1; break;
 					case sf::Keyboard::Up: hardDrop = true; break;
+					case sf::Keyboard::Left:  if (!moveRepeated && moveTimer == 0) dx = -1; break;
+					case sf::Keyboard::Right: if (!moveRepeated && moveTimer == 0) dx = +1; break;
 					case sf::Keyboard::R: {
 						gameOver = false;
 						
@@ -596,12 +598,6 @@ int main() {
 		levelNum = lines / 6; // extremely simple level system
 		Level levelInfo = getLevel(levelNum);
 		levelNum++; // oops! i multiply by this number!
-		
-		// Respond to initial press.
-		if (!moveRepeated && moveTimer == 0) {
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))  dx = -1;
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) dx = +1;
-		}
 		
 		// Timer logic
 		if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Left)
